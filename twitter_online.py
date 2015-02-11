@@ -1,3 +1,4 @@
+from pymongo import MongoClient
 from streamlda import StreamLDA
 from util import print_topics
 import datetime
