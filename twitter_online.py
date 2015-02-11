@@ -12,7 +12,7 @@ import time
 API and builds a topic model as new Tweets come in"""
 
 
-def loadNTweets(db_n, col_n, date):
+def loadNTweets(db_n, col_n, date, e_date):
     """loads a list of Tweets that aren't in the model yet"""
 
     client = MongoClient()
@@ -22,7 +22,7 @@ def loadNTweets(db_n, col_n, date):
     tweets = []
     i = 0
 
-    for t in col.find({"created_at": {"$gt": date}}):
+    for t in col.find({"created_at": {"$gt": date, "$lt": e_date}}):
         tweets.append(t)
         print i, "extracting tweets after", date
         i += 1
@@ -92,9 +92,13 @@ def fullRun(db_n, col_n, num_topics, alpha, eta, tau0, kappa, date, s_count,
         olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
     i = 0
 
+    # give the db enough time so that we aren't pulling tweets that are just
+    # coming in, this can crash the db
+    time.sleep(60)
+
     while True:
         
-        tweets = loadNTweets(db_n, col_n, date)
+        tweets = loadNTweets(db_n, col_n, date, t_main)
         c_names, c_tweets = processTweets(tweets)
 
         # store the ids so that they can be linked up with the documents later
