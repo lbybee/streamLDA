@@ -23,6 +23,7 @@
 from nltk import FreqDist
 import string, random
 import numpy as n
+import os
 
 from math import log
 
@@ -91,18 +92,21 @@ class DirichletWords(object):
     translate_table = (string.letters*5)[:256]
     # /dev/urandom is technically not as random as /dev/random, but it doesn't
     # block. 
-    r = open('/dev/urandom')
+    # r = open('/dev/urandom')
     # make random 'words' and add them to the topics. they'll never
     # realistically be seen again- which is good since we just want them to
     # seed the bias in the topics. 
     for i in xrange(self.num_topics):
         word_length = random.randint(9,20)
-        word = r.read(word_length).translate(translate_table)
+        # word = r.read(word_length).translate(translate_table)
+        # I substituded os.urandom(word_length) for r.read... because it is
+        # portable
+        word = os.urandom(word_length).translate(translate_table)
         self.index(word)
         topic_weights = probability_vector(self.num_topics)
         for k in xrange(self.num_topics):
             self.update_count(word, k, topic_weights[k])
-    r.close()
+    # r.close()
 
   def __len__(self):
     return len(self._words)
