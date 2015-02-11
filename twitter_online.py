@@ -90,12 +90,13 @@ def fullRun(db_n, col_n, num_topics, alpha, eta, tau0, kappa, date, s_count,
     # first we initalize the olda mod as well as inital run time
     t_main = datetime.datetime.now()
     if olda is None:
-        olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
+        olda = StreamLDA(num_topics, alpha, eta, tau0, kappa, sanity_check=False)
+    print "oLDA initalized"
     i = 0
 
     # give the db enough time so that we aren't pulling tweets that are just
     # coming in, this can crash the db
-    time.sleep(60)
+    time.sleep(30)
 
     while True:
         
