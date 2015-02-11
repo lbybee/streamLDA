@@ -97,6 +97,7 @@ def fullRun(db_n, col_n, num_topics, alpha, eta, tau0, kappa, date, s_count,
     # give the db enough time so that we aren't pulling tweets that are just
     # coming in, this can crash the db
     time.sleep(30)
+    print "beginning model updating..."
 
     while True:
         
