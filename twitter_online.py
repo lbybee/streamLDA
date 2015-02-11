@@ -1,6 +1,6 @@
-from datetime import datetime
 from streamlda import StreamLDA
 from util import print_topics
+from datetime import datetime
 import numpy as n
 from pylab import *
 import random
