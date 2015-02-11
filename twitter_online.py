@@ -5,6 +5,7 @@ import numpy as n
 from pylab import *
 import random
 import cPickle
+import time
 
 
 """ This script loads a mongodb database of tweets scraped from the Twitter
