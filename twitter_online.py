@@ -1,6 +1,6 @@
 from streamlda import StreamLDA
 from util import print_topics
-from datetime import datetime
+import datetime
 import numpy as n
 from pylab import *
 import random
@@ -87,7 +87,7 @@ def fullRun(db_n, col_n, num_topics, alpha, eta, tau0, kappa, date, s_count,
     """keeps the lights on"""
 
     # first we initalize the olda mod as well as inital run time
-    t_main = datetime.now()
+    t_main = datetime.datetime.now()
     if olda is None:
         olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
     i = 0
@@ -106,7 +106,7 @@ def fullRun(db_n, col_n, num_topics, alpha, eta, tau0, kappa, date, s_count,
     
         # we initalize an iteration specific run time so that when we
         # grab new data we are only grabbing data we haven't added before
-        t_run = datetime.now()
+        t_run = datetime.datetime.now()
         date = t_run
 
         # now we update the olda obj
@@ -119,5 +119,5 @@ def fullRun(db_n, col_n, num_topics, alpha, eta, tau0, kappa, date, s_count,
         # now store the model in case of a crash
         crashPrep(olda, t_run, "backup.pkl")
 
-        print i, datetime.now() - t_run, datetime.now() - t_main
+        print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
         time.sleep(s_count)
