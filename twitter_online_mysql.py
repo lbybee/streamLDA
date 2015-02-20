@@ -27,9 +27,10 @@ def loadNTweets(host, user, passwd, db, table, date):
     cursor.execute("SET CHARACTER SET utf8mb4")
     cursor.execute("SET character_set_connection=utf8mb4")
 
-    search_str = "SELECT UID TEXT FROM %s WHERE YEAR > %d AND MONTH > %d AND DAY > %d AND HOUR > %d" % (table, date.year, date.month, date.day, date.hour)
+    search_str = "SELECT UID, TEXT FROM %s WHERE YEAR >= %d AND MONTH >= %d AND DAY >= %d AND HOUR >= %d" % (table, date.year, date.month, date.day, date.hour)
     cursor.execute(search_str)
     data = cursor.fetchall()
+    data = [r for r in data]
     return data
 
 
