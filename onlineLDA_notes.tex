@@ -1,0 +1,43 @@
+%
+\documentclass[a4paper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+
+\title{Online LDA Notes}
+
+\author{Leland Bybee}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+The goal of this project is to develop a tool that can detect changes in a news stream and report these to some higher power for further analysis.
+
+The basic idea is to run an online LDA model in each period and use the output of this model as a time series to detect changes.  What we can do is produce a number of measures from the time series of online LDA models to build a distribution for different factors over time.  
+
+Some of these factors include
+
+\begin{itemize}
+\item Coherence scores
+\item correlation between document nodes
+\end{itemize}
+
+Note that a document node is just the source for a given document.  The idea here is to feed a large set of documents from different sources into the online LDA model and then you can look at how the different sources relate by looking at the topic proportions assigned to that source in each period.
+
+What I want to do is essentially produce an empirical distribution for some set of variables, that is just the observations for that variable for some moving window in the past.  Then we can take these distributions and compare them to the new values that are coming in as time moves forward.  In cases where a new observation lies outside of some threshold for the distribution the tool should flag it and send a signal to the user.
+
+Note that while this code is contained in the streamLDA directory, it is really more than streamLDA, though it is build on that code.
+
+\section{Procedure}
+
+
+
+\end{document}
