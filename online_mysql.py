@@ -6,7 +6,7 @@ from datetime import timedelta
 import numpy as n
 from pylab import *
 import random
-import pickle
+import dill 
 import time
 
 
@@ -87,21 +87,36 @@ def writeModelRes(olda_mod, gamma, date):
     n.savetxt("gamma-%s.txt" % str_date, gamma)
 
 
-def crashPrep(olda_mod, date, pickle_f):
+def crashPrep(olda_mod, dill_f):
     """stores the olda mod in case of a crash"""
 
-    pickle_data = open(pickle_f, "wb")
-    pickle.dump(olda_mod, pickle_data)
-    pickle_data.close()
+    dill_data = open(dill_f, "wb")
+    out_data = {}
+    out_data["_K"] = olda_mod._K
+    out_data["_alpha"] = olda_mod._alpha
+    out_data["_eta"] = olda_mod._eta
+    out_data["_tau0"] = olda_mod._tau0
+    out_data["_kappa"] = olda_mod._kappa
+    out_data["sanity_check"] = olda_mod.sanity_check
+    out_data["_D"] = olda_mod._D
+    out_data["_batches_to_date"] = olda_mod._batches_to_date
+    out_data["recentbatch"] = olda_mod.recentbatch
+    out_data["_lambda"] = olda_mod._lambda
+    out_data["_lambda_mat"] = olda_mod._lambda_mat
+    out_data["_Elogbeta"] = olda_mod._Elogbeta
+    out_data["_expElogbeta"] = olda_mod._expElogbeta
+
+    dill.dump(out_data, dill_data)
+    dill_data.close()
 
 
 def loadCrashedRes(olda_f):
     """loads the results in case of a crash, this includes the olda obj
     and the crash date"""
 
-    pickle_data = open(olda_f, "rb")
-    data = pickle.load(pickle_data)
-    pickle_data.close()
+    dill_data = open(olda_f, "rb")
+    data = dill.load(dill_data)
+    dill_data.close()
     return data
 
 
@@ -114,16 +129,72 @@ def writeUserNames(c_names, f_name):
     f_data.close()
 
 
+def modelDumpTest(num_topics, alpha, eta, tau0, kappa, date, s_count,
+                  host, user, passwd, db, table, source="twitter",
+                  user_f="user_ids.pkl", olda=None, in_data_f=""):
+    """tests the output"""
+
+    # first we initalize the olda mod as well as inital run time
+    t_main = datetime.datetime.now()
+    if olda is None:
+        if in_data_f == "":
+            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
+        else:
+            in_data = loadCrashedRes(in_data_f)
+            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa, prev_model=in_data)
+    print "oLDA initalized"
+    i = 0
+    print "beginning model updating..."
+
+    # we initalize an iteration specific run time so that when we
+    # grab new data we are only grabbing data we haven't added before
+    t_run = datetime.datetime.now()
+        
+    if source == "twitter":
+        user_data = open(user_f, "rb")
+        user_ids = dill.load(user_data)
+        user_data.close()
+        tweets = loadNTweets(host, user, passwd, db, table, date, t_run)
+        c_ids, c_text = processSourceTextPair(tweets, user_ids)
+    else:
+        comments = loadNComments(host, user, passwd, db, table, date, t_run)
+        c_ids, c_text = processSourceTextPair(comments)
+
+    # store the ids so that they can be linked up with the documents later
+    writeUserNames(c_ids, source + "_u_ids.txt")
+    
+    date = t_run
+
+    # now we update the olda obj
+    gamma, bound = olda.update_lambda(c_text)
+    wordids, wordcts = olda.parse_new_docs(c_text)
+
+
+    # write each iteration to their files
+    writeModelRes(olda, gamma, date)
+    print "models written"
+
+    # now store the model in case of a crash
+    crashPrep(olda, source + "_backup.pkl")
+
+    print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
+    return olda
+
+
 def fullRun(num_topics, alpha, eta, tau0, kappa, date, s_count,
             host, user, passwd, db, table, source="twitter",
-            user_f="user_ids.pkl", olda=None):
+            user_f="user_ids.pkl", olda=None, in_data_f=""):
     """keeps the lights on, some good starting values
     alpha = 50/num_topics, eta = 0.1, tau0=1 kappa=0.7"""
 
     # first we initalize the olda mod as well as inital run time
     t_main = datetime.datetime.now()
     if olda is None:
-        olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
+        if in_data_f == "":
+            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
+        else:
+            in_data = loadCrashedRes(in_data_f)
+            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa, prev_model=in_data)
     print "oLDA initalized"
     i = 0
     print "beginning model updating..."
@@ -136,7 +207,7 @@ def fullRun(num_topics, alpha, eta, tau0, kappa, date, s_count,
         
         if source == "twitter":
             user_data = open(user_f, "rb")
-            user_ids = pickle.load(user_data)
+            user_ids = dill.load(user_data)
             user_data.close()
             tweets = loadNTweets(host, user, passwd, db, table, date, t_run)
             c_ids, c_text = processSourceTextPair(tweets, user_ids)
@@ -159,7 +230,7 @@ def fullRun(num_topics, alpha, eta, tau0, kappa, date, s_count,
         print "models written"
 
         # now store the model in case of a crash
-        # crashPrep(olda, t_run, source + "_backup.pkl")
+        crashPrep(olda, source + "_backup.pkl")
 
         print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
         i += 1
@@ -188,7 +259,7 @@ def modelInit(num_topics, alpha, eta, tau0, kappa, s_date, e_date,
         
         if source == "twitter":
             user_data = open(user_f, "rb")
-            user_ids = pickle.load(user_data)
+            user_ids = dill.load(user_data)
             user_data.close()
             tweets = loadNTweets(host, user, passwd, db, table, d, d + timedelta(1))
             c_ids, c_text = processSourceTextPair(tweets, user_ids)
@@ -216,7 +287,7 @@ def modelInit(num_topics, alpha, eta, tau0, kappa, s_date, e_date,
             print "models written"
 
             # now store the model in case of a crash
-            # crashPrep(olda, t_run, source + "_backup.pkl")
+            crashPrep(olda, source + "_backup.pkl")
 
             print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
         else:
