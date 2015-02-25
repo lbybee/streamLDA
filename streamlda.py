@@ -47,7 +47,7 @@ class StreamLDA:
     Implements stream-based LDA as an extension to online Variational Bayes for
     LDA, as described in (Hoffman et al. 2010).  """
 
-    def __init__(self, K, alpha, eta, tau0, kappa, sanity_check=False, prev_model={}):
+    def __init__(self, K=1, alpha=1.0, eta=0.1, tau0=1.0, kappa=0.7, sanity_check=False):
         """
         Arguments:
         K: Number of topics
@@ -64,49 +64,33 @@ class StreamLDA:
         if not isinstance(K, int):
             raise ParameterError
 
-        if len(prev_model) == 0:
-            # set the model-level parameters
-            self._K = K
-            self._alpha = alpha
-            self._eta = eta
-            self._tau0 = tau0 + 1
-            self._kappa = kappa
-            self.sanity_check = sanity_check
-            # number of documents seen *so far*. Updated each time a new batch is
-            # submitted. 
-            self._D = 0
+        # set the model-level parameters
+        self._K = K
+        self._alpha = alpha
+        self._eta = eta
+        self._tau0 = tau0 + 1
+        self._kappa = kappa
+        self.sanity_check = sanity_check
+        # number of documents seen *so far*. Updated each time a new batch is
+        # submitted. 
+        self._D = 0
 
-            # number of batches processed so far. 
-            self._batches_to_date = 0
+        # number of batches processed so far. 
+        self._batches_to_date = 0
 
-            # cache the wordids and wordcts for the most recent batch so they don't
-            # have to be recalculated when computing perplexity
-            self.recentbatch = {'wordids': None, 'wordcts': None}
+        # cache the wordids and wordcts for the most recent batch so they don't
+        # have to be recalculated when computing perplexity
+        self.recentbatch = {'wordids': None, 'wordcts': None}
 
-            # Initialize lambda as a DirichletWords object which has a non-zero
-            # probability for any character sequence, even those unseen. 
-            self._lambda = DirichletWords(self._K, sanity_check=self.sanity_check, initialize=True)
-            self._lambda_mat = self._lambda.as_matrix()
+        # Initialize lambda as a DirichletWords object which has a non-zero
+        # probability for any character sequence, even those unseen. 
+        self._lambda = DirichletWords(self._K, sanity_check=self.sanity_check, initialize=True)
+        self._lambda_mat = self._lambda.as_matrix()
 
-            # set the variational distribution q(beta|lambda). 
-            self._Elogbeta = self._lambda_mat # num_topics x num_words
-            self._expElogbeta = n.exp(self._Elogbeta) # num_topics x num_words
+        # set the variational distribution q(beta|lambda). 
+        self._Elogbeta = self._lambda_mat # num_topics x num_words
+        self._expElogbeta = n.exp(self._Elogbeta) # num_topics x num_words
         
-        else:
-            self._K = prev_model["_K"]
-            self._alpha = prev_model["_alpha"]
-            self._eta = prev_model["_eta"]
-            self._tau0 = prev_model["_tau0"]
-            self._kappa = prev_model["_kappa"]
-            self.sanity_check = prev_model["sanity_check"]
-            self._D = prev_model["_D"]
-            self._batches_to_date = prev_model["_batches_to_date"]
-            self.recentbatch = prev_model["recentbatch"]
-            self._lambda = prev_model["_lambda"]
-            self._lambda_mat = prev_model["_lambda_mat"]
-            self._Elogbeta = prev_model["_Elogbeta"]
-            self._expElogbeta = prev_model["_expElogbeta"]
-
 
     def parse_new_docs(self, new_docs):
         """

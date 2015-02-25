@@ -7,7 +7,7 @@ from datetime import timedelta
 import numpy as n
 from pylab import *
 import random
-import pickle
+import cPickle
 import dill 
 import time
 import os
@@ -28,13 +28,17 @@ db = sys.argv[14]
 table = sys.argv[15]
 source = sys.argv[16]
 user_f = sys.argv[17]
+load_prev = int(sys.argv[18])
 
 
-os.chdir(sys.argv[18])
+os.chdir(sys.argv[19])
 
 # first we initalize the olda mod as well as inital run time
 t_main = datetime.datetime.now()
-olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
+if load_prev:
+    olda = loadCrashedRes(source + "_backup.pkl")
+else:
+    olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
 print "oLDA initalized"
 i = 0
 print "beginning model updating..."
@@ -47,7 +51,7 @@ while True:
      
     if source == "twitter":
         user_data = open(user_f, "rb")
-        user_ids = dill.load(user_data)
+        user_ids = cPickle.load(user_data)
         user_data.close()
         tweets = loadNTweets(host, user, passwd, db, table, date, t_run)
         c_ids, c_text = processSourceTextPair(tweets, user_ids)
@@ -70,7 +74,7 @@ while True:
     print "models written"
 
     # now store the model in case of a crash
-    dill.dump_session(source + "_backup.pkl")
+    crashPrep(olda, source + "_backup.pkl")
 
     print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
     i += 1

@@ -28,13 +28,16 @@ db = sys.argv[17]
 table = sys.argv[18]
 source = sys.argv[19]
 user_f = sys.argv[20]
+load_prev = int(sys.argv[21])
 
 
-os.chdir(sys.argv[21])
+os.chdir(sys.argv[22])
 
 # first we initalize the olda mod as well as inital run time
 t_main = datetime.datetime.now()
-if olda is None:
+if load_prev:
+    olda = loadCrashedRes(source + "_backup.pkl")
+else:
     olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
 print "oLDA initalized"
 i = 0

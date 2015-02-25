@@ -1,4 +1,6 @@
 from streamlda import StreamLDA
+from dirichlet_words import DirichletWords
+from nltk import FreqDist
 from util import print_topics
 import MySQLdb
 import datetime
@@ -6,7 +8,7 @@ from datetime import timedelta
 import numpy as n
 from pylab import *
 import random
-import dill 
+import cPickle
 import time
 
 
@@ -87,27 +89,16 @@ def writeModelRes(olda_mod, gamma, date):
     n.savetxt("gamma-%s.txt" % str_date, gamma)
 
 
-def crashPrep(olda_mod, dill_f):
+def crashPrep(olda_mod, pickle_f):
     """stores the olda mod in case of a crash"""
 
-    dill_data = open(dill_f, "wb")
-    out_data = {}
-    out_data["_K"] = olda_mod._K
-    out_data["_alpha"] = olda_mod._alpha
-    out_data["_eta"] = olda_mod._eta
-    out_data["_tau0"] = olda_mod._tau0
-    out_data["_kappa"] = olda_mod._kappa
-    out_data["sanity_check"] = olda_mod.sanity_check
-    out_data["_D"] = olda_mod._D
-    out_data["_batches_to_date"] = olda_mod._batches_to_date
-    out_data["recentbatch"] = olda_mod.recentbatch
-    out_data["_lambda"] = olda_mod._lambda
-    out_data["_lambda_mat"] = olda_mod._lambda_mat
-    out_data["_Elogbeta"] = olda_mod._Elogbeta
-    out_data["_expElogbeta"] = olda_mod._expElogbeta
-
-    dill.dump(out_data, dill_data)
-    dill_data.close()
+    pickle_data = open(pickle_f, "wb")
+    out_data = olda_mod.__dict__
+    out_data["_lambda"] = out_data["_lambda"].__dict__
+    out_data["_lambda"]["_words"] = out_data["_lambda"]["_words"].__dict__
+    out_data["_lambda"]["_topics"] = [t.__dict__ for t in out_data["_lambda"]["_topics"]]
+    cPickle.dump(out_data, pickle_data)
+    pickle_data.close()
 
 
 def loadCrashedRes(olda_f):
@@ -115,9 +106,19 @@ def loadCrashedRes(olda_f):
     and the crash date"""
 
     dill_data = open(olda_f, "rb")
-    data = dill.load(dill_data)
+    data = cPickle.load(pickle_data)
     dill_data.close()
-    return data
+    olda_mod = StreamLDA()
+    olda_mod.__dict__ = data
+    olda_mod.__dict__["_lambda"] = DirichletWords()
+    olda_mod.__dict__["_lambda"].__dict__ = data["_lambda"]
+    olda_mod.__dict__["_lambda"].__dict__["_words"] = FreqDist()
+    olda_mod.__dict__["_lambda"].__dict__["_words"] = data["_lambda"]["_words"]
+    olda_mod.__dict__["_lambda"].__dict__["_topics"] = [FreqDist() for t in data["_lambda"]["_topics"]]
+    for i in range(0, len(data["_lambda"]["_topics"])):
+        olda_mod.__dict__["lambda"].__dict__["_topics"][i].__dict__ = data["_lambda"]["_topics"][i]
+
+    return olda_mod
 
 
 def writeUserNames(c_names, f_name):
@@ -129,167 +130,6 @@ def writeUserNames(c_names, f_name):
     f_data.close()
 
 
-def modelDumpTest(num_topics, alpha, eta, tau0, kappa, date, s_count,
-                  host, user, passwd, db, table, source="twitter",
-                  user_f="user_ids.pkl", olda=None, in_data_f=""):
-    """tests the output"""
-
-    # first we initalize the olda mod as well as inital run time
-    t_main = datetime.datetime.now()
-    if olda is None:
-        if in_data_f == "":
-            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
-        else:
-            in_data = loadCrashedRes(in_data_f)
-            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa, prev_model=in_data)
-    print "oLDA initalized"
-    i = 0
-    print "beginning model updating..."
-
-    # we initalize an iteration specific run time so that when we
-    # grab new data we are only grabbing data we haven't added before
-    t_run = datetime.datetime.now()
-        
-    if source == "twitter":
-        user_data = open(user_f, "rb")
-        user_ids = dill.load(user_data)
-        user_data.close()
-        tweets = loadNTweets(host, user, passwd, db, table, date, t_run)
-        c_ids, c_text = processSourceTextPair(tweets, user_ids)
-    else:
-        comments = loadNComments(host, user, passwd, db, table, date, t_run)
-        c_ids, c_text = processSourceTextPair(comments)
-
-    # store the ids so that they can be linked up with the documents later
-    writeUserNames(c_ids, source + "_u_ids.txt")
-    
-    date = t_run
-
-    # now we update the olda obj
-    gamma, bound = olda.update_lambda(c_text)
-    wordids, wordcts = olda.parse_new_docs(c_text)
-
-
-    # write each iteration to their files
-    writeModelRes(olda, gamma, date)
-    print "models written"
-
-    # now store the model in case of a crash
-    crashPrep(olda, source + "_backup.pkl")
-
-    print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
-    return olda
-
-
-def fullRun(num_topics, alpha, eta, tau0, kappa, date, s_count,
-            host, user, passwd, db, table, source="twitter",
-            user_f="user_ids.pkl", olda=None, in_data_f=""):
-    """keeps the lights on, some good starting values
-    alpha = 50/num_topics, eta = 0.1, tau0=1 kappa=0.7"""
-
-    # first we initalize the olda mod as well as inital run time
-    t_main = datetime.datetime.now()
-    if olda is None:
-        if in_data_f == "":
-            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
-        else:
-            in_data = loadCrashedRes(in_data_f)
-            olda = StreamLDA(num_topics, alpha, eta, tau0, kappa, prev_model=in_data)
-    print "oLDA initalized"
-    i = 0
-    print "beginning model updating..."
-
-    while True:
-
-        # we initalize an iteration specific run time so that when we
-        # grab new data we are only grabbing data we haven't added before
-        t_run = datetime.datetime.now()
-        
-        if source == "twitter":
-            user_data = open(user_f, "rb")
-            user_ids = dill.load(user_data)
-            user_data.close()
-            tweets = loadNTweets(host, user, passwd, db, table, date, t_run)
-            c_ids, c_text = processSourceTextPair(tweets, user_ids)
-        else:
-            comments = loadNComments(host, user, passwd, db, table, date, t_run)
-            c_ids, c_text = processSourceTextPair(comments)
-
-        # store the ids so that they can be linked up with the documents later
-        writeUserNames(c_ids, source + "_u_ids.txt")
-    
-        date = t_run
-
-        # now we update the olda obj
-        gamma, bound = olda.update_lambda(c_text)
-        wordids, wordcts = olda.parse_new_docs(c_text)
-
-
-        # write each iteration to their files
-        writeModelRes(olda, gamma, date)
-        print "models written"
-
-        # now store the model in case of a crash
-        crashPrep(olda, source + "_backup.pkl")
-
-        print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
-        i += 1
-        time.sleep(s_count)
-
-
 def daterange(start_date, end_date):
     for n in range(int ((end_date - start_date).days) + 1):
         yield start_date + timedelta(n) 
-
-
-def modelInit(num_topics, alpha, eta, tau0, kappa, s_date, e_date,
-              host, user, passwd, db, table, source="twitter",
-              user_f="user_ids.pkl", olda=None):
-    """initalizes the model for a series of days"""
-
-    # first we initalize the olda mod as well as inital run time
-    t_main = datetime.datetime.now()
-    if olda is None:
-        olda = StreamLDA(num_topics, alpha, eta, tau0, kappa)
-    print "oLDA initalized"
-    i = 0
-    print "beginning model updating..."
-
-    for d in daterange(s_date, e_date):
-        
-        if source == "twitter":
-            user_data = open(user_f, "rb")
-            user_ids = dill.load(user_data)
-            user_data.close()
-            tweets = loadNTweets(host, user, passwd, db, table, d, d + timedelta(1))
-            c_ids, c_text = processSourceTextPair(tweets, user_ids)
-        else:
-            comments = loadNComments(host, user, passwd, db, table, d, d + timedelta(1))
-            c_ids, c_text = processSourceTextPair(comments)
-
-
-        if len(c_text) > 0:
-            # store the ids so that they can be linked up with the documents later
-            writeUserNames(c_ids, source + "_u_ids.txt")
-    
-            # we initalize an iteration specific run time so that when we
-            # grab new data we are only grabbing data we haven't added before
-            t_run = datetime.datetime.now()
-            date = t_run
-
-            # now we update the olda obj
-            gamma, bound = olda.update_lambda(c_text)
-            wordids, wordcts = olda.parse_new_docs(c_text)
-
-
-            # write each iteration to their files
-            writeModelRes(olda, gamma, d)
-            print "models written"
-
-            # now store the model in case of a crash
-            crashPrep(olda, source + "_backup.pkl")
-
-            print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main
-        else:
-            print i, datetime.datetime.now() - t_run, datetime.datetime.now() - t_main, "No data for this period"
-        i += 1
