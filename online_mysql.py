@@ -95,6 +95,7 @@ def crashPrep(olda_mod, pickle_f):
     pickle_data = open(pickle_f, "wb")
     out_data = olda_mod.__dict__
     out_data["_lambda"] = out_data["_lambda"].__dict__
+    out_data["_lambda"]["_report"] = None
     out_data["_lambda"]["_words"] = out_data["_lambda"]["_words"].__dict__
     out_data["_lambda"]["_topics"] = [t.__dict__ for t in out_data["_lambda"]["_topics"]]
     cPickle.dump(out_data, pickle_data)
@@ -105,18 +106,28 @@ def loadCrashedRes(olda_f):
     """loads the results in case of a crash, this includes the olda obj
     and the crash date"""
 
-    dill_data = open(olda_f, "rb")
+    pickle_data = open(olda_f, "rb")
     data = cPickle.load(pickle_data)
-    dill_data.close()
+    pickle_data.close()
+    t_lambda_dict = data["_lambda"]
+
+    t_words = FreqDist()
+    t_words.__dict__ = data["_lambda"]["_words"]
+
+    t_topics = [FreqDist() for t in data["_lambda"]["_topics"]]
+    for i in range(len(data["_lambda"]["_topics"])):
+        t_topics[i].__dict__ = data["_lambda"]["_topics"][i]
+
+    t_lambda_dict["_words"] = t_words
+    t_lambda_dict["_topics"] = t_topics
+
+    t_lambda = DirichletWords()
+    t_lambda.__dict__ = t_lambda_dict
+
+    data["_lambda"] = t_lambda
+    
     olda_mod = StreamLDA()
     olda_mod.__dict__ = data
-    olda_mod.__dict__["_lambda"] = DirichletWords()
-    olda_mod.__dict__["_lambda"].__dict__ = data["_lambda"]
-    olda_mod.__dict__["_lambda"].__dict__["_words"] = FreqDist()
-    olda_mod.__dict__["_lambda"].__dict__["_words"] = data["_lambda"]["_words"]
-    olda_mod.__dict__["_lambda"].__dict__["_topics"] = [FreqDist() for t in data["_lambda"]["_topics"]]
-    for i in range(0, len(data["_lambda"]["_topics"])):
-        olda_mod.__dict__["lambda"].__dict__["_topics"][i].__dict__ = data["_lambda"]["_topics"][i]
 
     return olda_mod
 

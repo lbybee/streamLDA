@@ -19,19 +19,20 @@ alpha = float(sys.argv[2])
 eta = float(sys.argv[3])
 tau0 = float(sys.argv[4])
 kappa = float(sys.argv[5])
-date = datetime.datetime(int(sys.argv[6]), int(sys.argv[7]), int(sys.argv[8]), int(sys.argv[9]), 0, 0)
-s_count = int(sys.argv[10])
-host = sys.argv[11]
-user = sys.argv[12]
-passwd = sys.argv[13]
-db = sys.argv[14]
-table = sys.argv[15]
-source = sys.argv[16]
-user_f = sys.argv[17]
-load_prev = int(sys.argv[18])
+#date = datetime.datetime(int(sys.argv[6]), int(sys.argv[7]), int(sys.argv[8]), int(sys.argv[9]), 0, 0)
+date = datetime.datetime.now() - timedelta(1)
+s_count = int(sys.argv[6])
+host = sys.argv[7]
+user = sys.argv[8]
+passwd = sys.argv[9]
+db = sys.argv[10]
+table = sys.argv[11]
+source = sys.argv[12]
+user_f = sys.argv[13]
+load_prev = int(sys.argv[14])
 
 
-os.chdir(sys.argv[19])
+os.chdir(sys.argv[15])
 
 # first we initalize the olda mod as well as inital run time
 t_main = datetime.datetime.now()

@@ -42,7 +42,7 @@ class DirichletWords(object):
     self.int_to_word = {}
 
 
-  def __init__(self, num_topics = 1.0, alpha_topic = 1.0, alpha_word = 1.0, 
+  def __init__(self, num_topics = 1, alpha_topic = 1.0, alpha_word = 1.0, 
                max_tables = 50000, sanity_check=False, initialize=False,
                report_filename="topic_history.txt"):
 
